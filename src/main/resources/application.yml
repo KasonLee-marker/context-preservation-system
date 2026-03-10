@@ -1,0 +1,55 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: context-preservation-system
+  
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.3
+      embedding:
+        options:
+          model: text-embedding-3-small
+    
+    vectorstore:
+      milvus:
+        host: localhost
+        port: 19530
+        collection-name: conversation_chunks
+        embedding-dimension: 1536  # DashScope text-embedding-v2
+
+# 阿里云灵积配置
+dashscope:
+  api-key: ${DASHSCOPE_API_KEY:}
+  embedding-model: tongyi-embedding-vision-plus
+  
+  datasource:
+    url: jdbc:h2:mem:cpsdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+# 上下文保存配置
+context:
+  preservation:
+    threshold: 3000  # Token 阈值，超过则触发保存
+    summary-model: gpt-4o-mini
+    max-history-chunks: 5  # 最多检索5个历史片段
+  
+  retrieval:
+    top-k: 5
+    score-threshold: 0.7
+
+logging:
+  level:
+    com.example.cps: DEBUG

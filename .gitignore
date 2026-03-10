@@ -1,0 +1,29 @@
+# Compiled files
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Test
+test-output/
