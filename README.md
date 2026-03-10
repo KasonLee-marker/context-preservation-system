@@ -189,7 +189,7 @@ context-preservation-system/
     <repository>
         <id>spring-milestones</id>
         <name>Spring Milestones</name>
-        <url>https://repo.spring.io/milestone</url>
+        <url>https://maven.aliyun.com/repository/public</url>
     </repository>
 </repositories>
 ```
