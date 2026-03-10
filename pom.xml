@@ -25,6 +25,17 @@
         <milvus.version>2.3.5</milvus.version>
     </properties>
     
+    <repositories>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    
     <dependencies>
         <!-- Spring Boot Starters -->
         <dependency>
