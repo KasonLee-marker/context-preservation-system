@@ -28,6 +28,9 @@ public class ConversationController {
     @Autowired
     private ContextRetrievalService retrievalService;
     
+    @Autowired
+    private com.example.cps.service.LLMService llmService;
+    
     // 模拟内存中的对话存储（实际应用应使用 Redis 或数据库）
     private final List<Message> currentMessages = new ArrayList<>();
     private String currentSessionId = UUID.randomUUID().toString();
@@ -65,8 +68,8 @@ public class ConversationController {
             relevantContexts
         );
         
-        // 5. 模拟 LLM 回复（实际应调用 LLM）
-        String response = simulateLLMResponse(augmentedPrompt);
+        // 5. 调用 LLM 生成回复
+        String response = llmService.generate(augmentedPrompt);
         
         Message assistantMessage = Message.assistant(response);
         currentMessages.add(assistantMessage);
@@ -122,16 +125,7 @@ public class ConversationController {
         return ResponseEntity.ok("Conversation cleared, new session: " + currentSessionId);
     }
     
-    /**
-     * 模拟 LLM 响应
-     */
-    private String simulateLLMResponse(String prompt) {
-        // 实际应用中这里调用 LLM
-        if (prompt.contains("历史对话")) {
-            return "基于历史对话，我理解您之前讨论过相关话题。我来继续回答您的问题...";
-        }
-        return "这是一个模拟回复。实际应用中会调用 LLM API。";
-    }
+    // LLM 服务已注入，删除旧的模拟方法
     
     // 请求/响应对象
     @Data

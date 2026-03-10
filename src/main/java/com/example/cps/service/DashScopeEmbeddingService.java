@@ -9,12 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 阿里云灵积 Embedding 服务 - HTTP 直接调用
+ * 使用官方 multimodal-embedding API
  * 免费额度：100万次调用/月
  */
 @Service
@@ -26,7 +28,8 @@ public class DashScopeEmbeddingService {
     
     private static final String EMBEDDING_MODEL = "tongyi-embedding-vision-plus";
     private static final int DIMENSION = 1536;
-    private static final String API_URL = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding";
+    // 使用官方 multimodal-embedding API
+    private static final String API_URL = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding";
     
     private final RestTemplate restTemplate = new RestTemplate();
     
@@ -39,11 +42,18 @@ public class DashScopeEmbeddingService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + apiKey);
             
+            // 使用官方推荐的请求格式
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", EMBEDDING_MODEL);
             
+            // 构建 contents 数组
+            List<Map<String, String>> contents = new ArrayList<>();
+            Map<String, String> content = new HashMap<>();
+            content.put("text", text);
+            contents.add(content);
+            
             Map<String, Object> input = new HashMap<>();
-            input.put("texts", List.of(text));
+            input.put("contents", contents);
             requestBody.put("input", input);
             
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
