@@ -1,20 +1,20 @@
 package com.example.cps.service;
 
-import com.alibaba.dashscope.embeddings.Embedding;
-import com.alibaba.dashscope.embeddings.EmbeddingList;
-import com.alibaba.dashscope.embeddings.TextEmbedding;
-import com.alibaba.dashscope.embeddings.TextEmbeddingParam;
-import com.alibaba.dashscope.exception.ApiException;
-import com.alibaba.dashscope.exception.NoApiKeyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 阿里云灵积 Embedding 服务
+ * 阿里云灵积 Embedding 服务 - HTTP 直接调用
  * 免费额度：100万次调用/月
  */
 @Service
@@ -26,29 +26,46 @@ public class DashScopeEmbeddingService {
     
     private static final String EMBEDDING_MODEL = "tongyi-embedding-vision-plus";
     private static final int DIMENSION = 1536;
+    private static final String API_URL = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding";
+    
+    private final RestTemplate restTemplate = new RestTemplate();
     
     /**
      * 单文本嵌入
      */
     public float[] embed(String text) {
         try {
-            TextEmbeddingParam param = TextEmbeddingParam.builder()
-                .apiKey(apiKey)
-                .model(EMBEDDING_MODEL)
-                .text(text)
-                .build();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Bearer " + apiKey);
             
-            TextEmbedding textEmbedding = new TextEmbedding();
-            EmbeddingList<Embedding> result = textEmbedding.call(param);
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", EMBEDDING_MODEL);
             
-            if (result.getOutput().getEmbeddings().isEmpty()) {
-                throw new RuntimeException("Embedding result is empty");
+            Map<String, Object> input = new HashMap<>();
+            input.put("texts", List.of(text));
+            requestBody.put("input", input);
+            
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            
+            ResponseEntity<Map> response = restTemplate.postForEntity(API_URL, request, Map.class);
+            
+            Map<String, Object> body = response.getBody();
+            if (body != null && body.containsKey("output")) {
+                Map<String, Object> output = (Map<String, Object>) body.get("output");
+                List<Map<String, Object>> embeddings = (List<Map<String, Object>>) output.get("embeddings");
+                
+                if (!embeddings.isEmpty()) {
+                    List<Double> embedding = (List<Double>) embeddings.get(0).get("embedding");
+                    return toFloatArray(embedding);
+                }
             }
             
-            List<Double> embedding = result.getOutput().getEmbeddings().get(0).getEmbedding();
-            return toFloatArray(embedding);
+            // 降级：返回零向量
+            log.warn("Embedding response empty, returning zero vector");
+            return new float[DIMENSION];
             
-        } catch (ApiException | NoApiKeyException e) {
+        } catch (Exception e) {
             log.error("Failed to get embedding from DashScope", e);
             // 降级：返回零向量
             return new float[DIMENSION];

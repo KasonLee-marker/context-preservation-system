@@ -5,28 +5,23 @@ spring:
   application:
     name: context-preservation-system
   
+  # 禁用 OpenAI 自动配置
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+  
   ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      chat:
-        options:
-          model: gpt-4o-mini
-          temperature: 0.3
-      embedding:
-        options:
-          model: text-embedding-3-small
-    
     vectorstore:
       milvus:
         host: localhost
         port: 19530
         collection-name: conversation_chunks
-        embedding-dimension: 1536  # DashScope text-embedding-v2
-
-# 阿里云灵积配置
-dashscope:
-  api-key: ${DASHSCOPE_API_KEY:}
-  embedding-model: tongyi-embedding-vision-plus
+        embedding-dimension: 1536
   
   datasource:
     url: jdbc:h2:mem:cpsdb
@@ -39,12 +34,17 @@ dashscope:
       ddl-auto: create-drop
     show-sql: true
 
+# 阿里云灵积配置
+dashscope:
+  api-key: ${DASHSCOPE_API_KEY:}
+  embedding-model: tongyi-embedding-vision-plus
+
 # 上下文保存配置
 context:
   preservation:
-    threshold: 3000  # Token 阈值，超过则触发保存
+    threshold: 3000
     summary-model: gpt-4o-mini
-    max-history-chunks: 5  # 最多检索5个历史片段
+    max-history-chunks: 5
   
   retrieval:
     top-k: 5
