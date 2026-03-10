@@ -39,7 +39,7 @@ flowchart TD
 
 ### 1. 获取 API Key
 
-访问 [阿里云灵积](https://dashscope.aliyun.com/)：
+访问 [阿里云灵积](https://bailian.console.aliyun.com/cn-beijing/?tab=model#/api-key)：
 1. 注册/登录阿里云账号
 2. 开通灵积服务
 3. 创建 API Key
