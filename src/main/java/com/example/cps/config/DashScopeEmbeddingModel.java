@@ -34,7 +34,7 @@ public class DashScopeEmbeddingModel implements EmbeddingModel {
     
     @Override
     public float[] embed(Document document) {
-        return embeddingService.embed(document.getText());
+        return embeddingService.embed(document.getContent());
     }
     
     @Override

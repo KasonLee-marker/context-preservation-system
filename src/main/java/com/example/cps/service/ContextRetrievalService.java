@@ -1,17 +1,12 @@
 package com.example.cps.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 上下文检索服务
@@ -21,10 +16,7 @@ import java.util.stream.Collectors;
 public class ContextRetrievalService {
     
     @Autowired
-    private VectorStore vectorStore;
-    
-    @Autowired
-    private DashScopeEmbeddingService dashScopeEmbeddingService;
+    private MilvusService milvusService;
     
     @Value("${context.retrieval.top-k:5}")
     private int topK;
@@ -41,26 +33,21 @@ public class ContextRetrievalService {
         String currentSessionId
     ) {
         try {
-            // 使用 DashScope 生成查询向量
-            float[] queryEmbedding = dashScopeEmbeddingService.embed(query);
+            // 使用 MilvusService 直接搜索
+            List<String> contents = milvusService.search(query, topK);
             
-            // 构建搜索请求
-            SearchRequest searchRequest = SearchRequest.builder()
-                .query(query)
-                .topK(topK)
-                .similarityThreshold((float) scoreThreshold)
-                .build();
+            log.info("Retrieved {} results from Milvus", contents.size());
             
-            // 执行检索
-            List<Document> documents = vectorStore.similaritySearch(searchRequest);
-            
-            // 过滤和转换
-            return documents.stream()
-                .filter(doc -> filterByUser(doc, userId))
-                .filter(doc -> !isFromCurrentSession(doc, currentSessionId))
-                .map(this::convertToRetrievedContext)
-                .sorted(Comparator.comparing(RetrievedContext::getScore).reversed())
-                .collect(Collectors.toList());
+            // 转换为 RetrievedContext
+            List<RetrievedContext> result = new ArrayList<>();
+            for (String content : contents) {
+                RetrievedContext ctx = RetrievedContext.builder()
+                    .originalText(content)
+                    .score(0.8)
+                    .build();
+                result.add(ctx);
+            }
+            return result;
                 
         } catch (Exception e) {
             log.error("Failed to retrieve context", e);
@@ -106,40 +93,7 @@ public class ContextRetrievalService {
         return prompt.toString();
     }
     
-    /**
-     * 按用户过滤
-     */
-    private boolean filterByUser(Document doc, String userId) {
-        Map<String, Object> metadata = doc.getMetadata();
-        String docUserId = (String) metadata.get("userId");
-        return docUserId != null && docUserId.equals(userId);
-    }
-    
-    /**
-     * 排除当前会话
-     */
-    private boolean isFromCurrentSession(Document doc, String currentSessionId) {
-        Map<String, Object> metadata = doc.getMetadata();
-        String sessionId = (String) metadata.get("sessionId");
-        return sessionId != null && sessionId.equals(currentSessionId);
-    }
-    
-    /**
-     * 转换为检索结果
-     */
-    private RetrievedContext convertToRetrievedContext(Document doc) {
-        Map<String, Object> metadata = doc.getMetadata();
-        
-        return RetrievedContext.builder()
-            .id(doc.getId())
-            .summary((String) metadata.get("summary"))
-            .keyInfo((String) metadata.get("keyInfo"))
-            .originalText((String) metadata.get("originalText"))
-            .timestamp((String) metadata.get("timestamp"))
-            .topic((String) metadata.getOrDefault("topic", "general"))
-            .score((Double) metadata.getOrDefault("score", 0.0))
-            .build();
-    }
+
     
     private String truncate(String text, int maxLength) {
         if (text == null || text.length() <= maxLength) {

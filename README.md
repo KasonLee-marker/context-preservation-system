@@ -61,6 +61,105 @@ export DASHSCOPE_API_KEY=sk-xxxx
 # export OPENAI_API_KEY=sk-xxxx
 ```
 
+## Docker 部署（推荐）
+
+### 方式一：一键部署（推荐）
+
+```bash
+# 1. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，填入你的 DASHSCOPE_API_KEY
+
+# 2. 启动所有服务（应用 + Milvus + etcd + MinIO）
+docker compose up -d
+
+# 3. 查看服务状态
+docker compose ps
+
+# 4. 查看日志
+docker compose logs -f app
+```
+
+### 方式二：本地开发模式
+
+```bash
+# 只启动基础设施（Milvus + etcd + MinIO）
+docker compose up -d milvus etcd minio
+
+# 本地构建并运行应用
+mvn clean package -DskipTests
+java -jar target/context-preservation-system-1.0.0.jar
+```
+
+### 停止服务
+
+```bash
+# 停止所有服务（保留数据）
+docker compose down
+
+# 停止所有服务并删除数据卷（⚠️ 数据会丢失）
+docker compose down -v
+
+# 停止单个服务
+docker compose stop app
+```
+
+### 重启服务
+
+```bash
+# 重启所有服务
+docker compose restart
+
+# 重启单个服务
+docker compose restart app
+```
+
+### 查看日志
+
+```bash
+# 查看所有服务日志
+docker compose logs
+
+# 查看特定服务日志
+docker compose logs app
+docker compose logs milvus
+
+# 实时跟踪日志
+docker compose logs -f app
+```
+
+## 快速开始（非 Docker）
+
+### 前置要求
+
+- Java 21
+- Maven 3.9+
+- 阿里云灵积 API Key（免费额度 100万次/月）
+
+### 1. 获取 API Key
+
+访问 [阿里云灵积](https://bailian.console.aliyun.com/cn-beijing/?tab=model#/api-key)：
+1. 注册/登录阿里云账号
+2. 开通灵积服务
+3. 创建 API Key
+
+### 2. 克隆代码
+
+```bash
+git clone https://github.com/KasonLee-marker/context-preservation-system.git
+cd context-preservation-system
+```
+
+### 3. 配置环境变量
+
+```bash
+# 必需：阿里云灵积 API Key
+export DASHSCOPE_API_KEY=sk-xxxx
+
+# 可选：OpenAI API Key（用于生成更好的摘要）
+# export OPENAI_API_KEY=sk-xxxx
+```
+
 ### 4. 启动基础设施
 
 ```bash
@@ -133,6 +232,19 @@ Milvus 内存限制（docker-compose.yml）：
 ```yaml
 mem_limit: 4g      # 最大内存 4GB
 mem_reservation: 1g  # 预留内存 1GB
+```
+
+### 数据持久化
+
+Docker 部署使用命名卷持久化数据：
+- `h2-data`：H2 数据库文件
+- `milvus-data`：向量数据库数据
+- `etcd-data`：Etcd 数据
+- `minio-data`：MinIO 对象存储数据
+
+查看数据卷：
+```bash
+docker volume ls | grep cps
 ```
 
 ## 三种运行模式

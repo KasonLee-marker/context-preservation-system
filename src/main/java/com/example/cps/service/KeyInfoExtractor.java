@@ -1,8 +1,6 @@
 package com.example.cps.service;
 
 import com.example.cps.entity.Message;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,48 +12,11 @@ import java.util.stream.Collectors;
 @Service
 public class KeyInfoExtractor {
     
-    @Autowired(required = false)
-    private ChatClient chatClient;
-    
-    private static final String EXTRACTION_PROMPT = """
-        从以下对话中提取关键信息，以结构化格式输出：
-        
-        对话内容：
-        {conversation}
-        
-        请提取以下信息（如无则写"无"）：
-        - **实体**: 提到的重要名词、工具、技术、人名等
-        - **决策**: 做出的决定或选择
-        - **任务**: 需要完成的任务
-        - **时间**: 提到的时间节点、截止日期
-        - **数值**: 重要的数字、配置参数、代码片段
-        - **问题**: 待解决的问题
-        
-        用简洁的中文输出。
-        """;
-    
     /**
      * 提取关键信息
      */
     public String extractKeyInfo(List<Message> messages) {
-        // 如果没有配置 LLM，使用简单提取
-        if (chatClient == null) {
-            return extractSimpleKeyInfo(messages);
-        }
-        
-        String conversation = formatMessages(messages);
-        
-        String prompt = EXTRACTION_PROMPT.replace("{conversation}", conversation);
-        
-        try {
-            return chatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
-        } catch (Exception e) {
-            // 降级到简单提取
-            return extractSimpleKeyInfo(messages);
-        }
+        return extractSimpleKeyInfo(messages);
     }
     
     /**

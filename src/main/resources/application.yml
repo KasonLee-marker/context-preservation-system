@@ -16,23 +16,29 @@ spring:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
   
   ai:
-    vectorstore:
-      milvus:
-        host: localhost
-        port: 19530
-        collection-name: conversation_chunks
-        embedding-dimension: 1536
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY:}
+      embedding-model: tongyi-embedding-vision-plus
+
+milvus:
+  host: ${SPRING_AI_MILVUS_HOST:localhost}
+  port: ${SPRING_AI_MILVUS_PORT:19530}
+  collection:
+    name: conversation_chunks
   
   datasource:
-    url: jdbc:h2:mem:cpsdb
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:/app/data/cpsdb}
     driver-class-name: org.h2.Driver
     username: sa
     password:
-  
+
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
 
 # 阿里云灵积配置
 dashscope:

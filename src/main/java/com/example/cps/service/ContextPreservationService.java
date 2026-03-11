@@ -31,10 +31,7 @@ public class ContextPreservationService {
     private KeyInfoExtractor keyInfoExtractor;
     
     @Autowired
-    private VectorStore vectorStore;
-    
-    @Autowired
-    private DashScopeEmbeddingService dashScopeEmbeddingService;
+    private MilvusService milvusService;
     
     @Value("${context.preservation.threshold:3000}")
     private int tokenThreshold;
@@ -99,43 +96,45 @@ public class ContextPreservationService {
      * 保存到向量数据库
      */
     private void saveToVectorStore(ConversationChunk chunk) {
-        // 使用 DashScope 生成 Embedding
+        // 组合用于嵌入的文本
         String embeddingText = combineForEmbedding(chunk);
-        float[] embedding = dashScopeEmbeddingService.embed(embeddingText);
         
-        // 创建 Document 对象
-        Document document = new Document(
-            chunk.getId(),
-            embeddingText,
-            java.util.Map.of(
-                "sessionId", chunk.getSessionId(),
-                "userId", chunk.getUserId(),
-                "summary", chunk.getSummary(),
-                "keyInfo", chunk.getKeyInfo(),
-                "originalText", chunk.getOriginalText(),
-                "timestamp", chunk.getTimestamp().toString(),
-                "embedding", embedding  // 存储向量
-            )
-        );
-        
-        vectorStore.add(List.of(document));
+        // 使用 MilvusService 直接插入
+        milvusService.insert(chunk.getId(), embeddingText);
     }
     
     /**
      * 组合用于嵌入的文本
      */
     private String combineForEmbedding(ConversationChunk chunk) {
-        return String.format("""
-            Summary: %s
-            
-            Key Information: %s
-            
-            Original Text: %s
-            """,
-            chunk.getSummary(),
-            chunk.getKeyInfo(),
-            chunk.getOriginalText()
-        );
+        if (chunk == null) {
+            log.warn("Chunk is null");
+            return "Empty chunk";
+        }
+        
+        String summary = chunk.getSummary();
+        String keyInfo = chunk.getKeyInfo();
+        String originalText = chunk.getOriginalText();
+        
+        log.info("Raw values - summary: {}, keyInfo: {}, originalText: {}", 
+            summary != null ? "present" : "null",
+            keyInfo != null ? "present" : "null", 
+            originalText != null ? "present" : "null");
+        
+        // 确保不为 null
+        summary = summary != null ? summary : "No summary";
+        keyInfo = keyInfo != null ? keyInfo : "No key info";
+        originalText = originalText != null ? originalText : "No original text";
+        
+        // 检查是否包含 null 字符
+        summary = summary.replace("\0", "");
+        keyInfo = keyInfo.replace("\0", "");
+        originalText = originalText.replace("\0", "");
+        
+        String result = "Summary: " + summary + "\nKey Information: " + keyInfo + "\nOriginal Text: " + originalText;
+        
+        log.info("Combined text length: {}", result.length());
+        return result;
     }
     
     /**

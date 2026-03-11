@@ -27,7 +27,7 @@ public class DashScopeEmbeddingService {
     private String apiKey;
     
     private static final String EMBEDDING_MODEL = "tongyi-embedding-vision-plus";
-    private static final int DIMENSION = 1536;
+    private static final int DIMENSION = 1152;  // tongyi-embedding-vision-plus 实际维度
     // 使用官方 multimodal-embedding API
     private static final String API_URL = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding";
     
@@ -38,6 +38,13 @@ public class DashScopeEmbeddingService {
      */
     public float[] embed(String text) {
         try {
+            log.info("Embedding text: {}, API Key length: {}", text.substring(0, Math.min(20, text.length())), apiKey != null ? apiKey.length() : 0);
+            
+            if (apiKey == null || apiKey.isEmpty()) {
+                log.error("DASHSCOPE_API_KEY is not set!");
+                return new float[DIMENSION];
+            }
+            
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + apiKey);

@@ -1,22 +1,38 @@
 version: '3.8'
 
 services:
+  # 主应用服务
   app:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: cps-app
     ports:
       - "8080:8080"
     environment:
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
       - SPRING_AI_MILVUS_HOST=milvus
+      - SPRING_AI_MILVUS_PORT=19530
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/cpsdb
+    volumes:
+      - h2-data:/app/data
     depends_on:
-      - milvus
+      milvus:
+        condition: service_healthy
     networks:
       - cps-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
+  # Milvus 向量数据库
   milvus:
     image: milvusdb/milvus:v2.3.5
+    container_name: cps-milvus
     command: ["milvus", "run", "standalone"]
     ports:
       - "19530:19530"
@@ -32,25 +48,62 @@ services:
       - minio
     networks:
       - cps-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - milvus-data:/var/lib/milvus
 
+  # Etcd 服务（Milvus 依赖）
   etcd:
     image: quay.io/coreos/etcd:v3.5.5
+    container_name: cps-etcd
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
       - ETCD_AUTO_COMPACTION_RETENTION=1000
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER=default=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER_TOKEN=etcd-cluster
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_NAME=default
     networks:
       - cps-network
+    restart: unless-stopped
+    volumes:
+      - etcd-data:/etcd-data
 
+  # MinIO 对象存储（Milvus 依赖）
   minio:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: cps-minio
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     command: minio server /minio_data
     networks:
       - cps-network
+    restart: unless-stopped
+    volumes:
+      - minio-data:/minio_data
 
 networks:
   cps-network:
     driver: bridge
+
+volumes:
+  h2-data:
+    driver: local
+  milvus-data:
+    driver: local
+  etcd-data:
+    driver: local
+  minio-data:
+    driver: local

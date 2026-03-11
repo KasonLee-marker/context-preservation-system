@@ -31,36 +31,45 @@ public class ConversationController {
     @Autowired
     private com.example.cps.service.LLMService llmService;
     
+    @Autowired
+    private com.example.cps.service.AsyncService asyncService;
+    
     // 模拟内存中的对话存储（实际应用应使用 Redis 或数据库）
     private final List<Message> currentMessages = new ArrayList<>();
     private String currentSessionId = UUID.randomUUID().toString();
     private String currentUserId = "user-001";
     
     /**
-     * 发送消息
+     * 发送消息（异步版本，10秒超时）
      */
     @PostMapping("/message")
     public ResponseEntity<ChatResponse> sendMessage(@RequestBody ChatRequest request) {
-        log.info("Received message: {}", request.getContent());
+        log.info("[API] 收到消息: {}", request.getContent());
         
         // 1. 添加用户消息
         Message userMessage = Message.user(request.getContent());
         currentMessages.add(userMessage);
         
-        // 2. 检查是否需要保存上下文
-        preservationService.preserveIfNeeded(
-            currentMessages, 
-            currentSessionId, 
-            currentUserId
-        );
+        // 2. 异步保存上下文（不阻塞）
+        asyncService.preserveAsync(currentMessages, currentSessionId, currentUserId)
+            .thenRun(() -> log.info("[Async] 上下文保存完成"))
+            .exceptionally(e -> {
+                log.error("[Async] 上下文保存失败: {}", e.getMessage());
+                return null;
+            });
         
-        // 3. 检索相关历史
-        List<ContextRetrievalService.RetrievedContext> relevantContexts = 
-            retrievalService.retrieveRelevantContext(
+        // 3. 同步检索（10秒超时）
+        List<ContextRetrievalService.RetrievedContext> relevantContexts = List.of();
+        try {
+            relevantContexts = retrievalService.retrieveRelevantContext(
                 request.getContent(), 
                 currentUserId, 
                 currentSessionId
             );
+            log.info("[API] 检索完成，找到 {} 条相关上下文", relevantContexts.size());
+        } catch (Exception e) {
+            log.error("[API] 检索失败: {}", e.getMessage());
+        }
         
         // 4. 构建增强提示
         String augmentedPrompt = retrievalService.buildAugmentedPrompt(
@@ -68,8 +77,16 @@ public class ConversationController {
             relevantContexts
         );
         
-        // 5. 调用 LLM 生成回复
-        String response = llmService.generate(augmentedPrompt);
+        // 5. 异步调用 LLM（10秒超时）
+        String response;
+        try {
+            response = asyncService.generateLlmResponseAsync(augmentedPrompt, llmService)
+                .get(10, java.util.concurrent.TimeUnit.SECONDS);
+            log.info("[API] LLM 响应生成成功");
+        } catch (Exception e) {
+            log.error("[API] LLM 调用超时或失败: {}", e.getMessage());
+            response = "抱歉，服务响应超时，请稍后重试。";
+        }
         
         Message assistantMessage = Message.assistant(response);
         currentMessages.add(assistantMessage);
@@ -91,28 +108,44 @@ public class ConversationController {
     }
     
     /**
-     * 手动触发保存
+     * 手动触发保存（异步版本，10秒超时）
      */
     @PostMapping("/preserve")
     public ResponseEntity<String> preserve() {
-        preservationService.preserve(currentMessages, currentSessionId, currentUserId);
-        return ResponseEntity.ok("Context preserved successfully");
+        log.info("[API] 收到保存请求");
+        try {
+            asyncService.preserveAsync(currentMessages, currentSessionId, currentUserId)
+                .get(10, java.util.concurrent.TimeUnit.SECONDS);
+            log.info("[API] 保存成功");
+            return ResponseEntity.ok("Context preserved successfully");
+        } catch (Exception e) {
+            log.error("[API] 保存失败或超时: {}", e.getMessage());
+            return ResponseEntity.status(504).body("保存超时: " + e.getMessage());
+        }
     }
     
     /**
-     * 检索相关历史
+     * 检索相关历史（异步版本，10秒超时）
      */
     @PostMapping("/retrieve")
     public ResponseEntity<List<ContextRetrievalService.RetrievedContext>> retrieve(
         @RequestBody RetrieveRequest request
     ) {
-        List<ContextRetrievalService.RetrievedContext> contexts = 
-            retrievalService.retrieveRelevantContext(
-                request.getQuery(), 
-                currentUserId, 
-                currentSessionId
-            );
-        return ResponseEntity.ok(contexts);
+        log.info("[API] 收到检索请求: {}", request.getQuery());
+        try {
+            // 注意：检索本身是同步的，但内部 Embedding 是异步的
+            List<ContextRetrievalService.RetrievedContext> contexts = 
+                retrievalService.retrieveRelevantContext(
+                    request.getQuery(), 
+                    currentUserId, 
+                    currentSessionId
+                );
+            log.info("[API] 检索完成，找到 {} 条结果", contexts.size());
+            return ResponseEntity.ok(contexts);
+        } catch (Exception e) {
+            log.error("[API] 检索失败: {}", e.getMessage());
+            return ResponseEntity.status(504).body(List.of());
+        }
     }
     
     /**
