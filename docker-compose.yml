@@ -10,7 +10,10 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # 必填：阿里云灵积 API Key
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      # 选填：嵌入模型，默认 tongyi-embedding-vision-plus
+      - DASHSCOPE_EMBEDDING_MODEL=${DASHSCOPE_EMBEDDING_MODEL:-tongyi-embedding-vision-plus}
       - SPRING_AI_MILVUS_HOST=milvus
       - SPRING_AI_MILVUS_PORT=19530
       - SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/cpsdb

@@ -18,7 +18,7 @@ spring:
   ai:
     dashscope:
       api-key: ${DASHSCOPE_API_KEY:}
-      embedding-model: tongyi-embedding-vision-plus
+      embedding-model: ${DASHSCOPE_EMBEDDING_MODEL:tongyi-embedding-vision-plus}
 
 milvus:
   host: ${SPRING_AI_MILVUS_HOST:localhost}
@@ -41,9 +41,11 @@ milvus:
         dialect: org.hibernate.dialect.H2Dialect
 
 # 阿里云灵积配置
+# 必填：DASHSCOPE_API_KEY - 阿里云灵积 API Key
+# 选填：DASHSCOPE_EMBEDDING_MODEL - 嵌入模型，默认 tongyi-embedding-vision-plus
 dashscope:
   api-key: ${DASHSCOPE_API_KEY:}
-  embedding-model: tongyi-embedding-vision-plus
+  embedding-model: ${DASHSCOPE_EMBEDDING_MODEL:tongyi-embedding-vision-plus}
 
 # 上下文保存配置
 context:
