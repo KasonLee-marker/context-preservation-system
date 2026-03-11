@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: cps-app
     ports:
-      - "8080:8080"
+      - "7001:7001"
     environment:
       # 必填：阿里云灵积 API Key
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
@@ -26,7 +26,7 @@ services:
       - cps-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7001/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
