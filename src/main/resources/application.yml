@@ -48,13 +48,13 @@ dashscope:
 # 上下文保存配置
 context:
   preservation:
-    threshold: 3000
+    threshold: 10000       # Token 阈值（约 200-500 句话，10-20 轮对话）
     summary-model: gpt-4o-mini
-    max-history-chunks: 5
+    max-history-chunks: 5  # 保留最近 5 个历史片段
   
   retrieval:
-    top-k: 5
-    score-threshold: 0.7
+    top-k: 5               # 检索结果数量
+    score-threshold: 0.7   # 相似度阈值（0-1，越高越严格）
 
 logging:
   level:
